@@ -40,19 +40,19 @@ app.post("/participants", async (req, res) => {
             return res.sendStatus(409)
         }
 
-        const create = await db.collection('users').insertOne({
+        await db.collection('users').insertOne({
             name: user.name,
             lastStatus: Date.now()
         })
         
-        const message = await db.collection('messages').insertOne({
+        await db.collection('messages').insertOne({
             from: user.name,
             to: 'Todos',
             text: 'entra na sala...',
             type: 'status',
             time: dayjs().format('HH:MM:SS')
         })
-        
+
         return res.sendStatus(201)
     } catch (error) {
         console.log(error)
@@ -60,7 +60,15 @@ app.post("/participants", async (req, res) => {
     }
 })
 
-
+app.get('/participants', async (req, res) => {
+    try {
+        const listUsers = await db.collection('users').find().toArray()
+        return res.send(listUsers)
+    } catch (error) {
+        console.log(error)
+        return res.sendStatus(500)
+    }
+})
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
