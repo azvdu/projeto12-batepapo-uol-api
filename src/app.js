@@ -22,6 +22,12 @@ app.use(express.json())
 const participant = joi.object({
     name: joi.string().required(),
 })
+const sms = joi.object({
+    to: joi.string().required(),
+    text: joi.string().required(),
+    type: joi.string().valid('message', 'private_message').required()
+})
+
 
 app.post("/participants", async (req, res) => {
     const user = req.body
@@ -29,7 +35,7 @@ app.post("/participants", async (req, res) => {
         if(!user.name){
             return res.sendStatus(422)
         }
-
+        
         const validation = participant.validate(user, {abortEarly: false})
         if (validation.error) {
             console.log(validation.error.details)
@@ -39,7 +45,7 @@ app.post("/participants", async (req, res) => {
         if(checkConflict){
             return res.sendStatus(409)
         }
-
+        
         await db.collection('users').insertOne({
             name: user.name,
             lastStatus: Date.now()
@@ -50,9 +56,9 @@ app.post("/participants", async (req, res) => {
             to: 'Todos',
             text: 'entra na sala...',
             type: 'status',
-            time: dayjs().format('HH:MM:SS')
+            time: dayjs().format('HH:mm:ss')
         })
-
+        
         return res.sendStatus(201)
     } catch (error) {
         console.log(error)
@@ -69,6 +75,43 @@ app.get('/participants', async (req, res) => {
         return res.sendStatus(500)
     }
 })
+
+
+app.post('/messages', async (req, res) => {
+    const message = req.body
+    const user = req.headers.user
+    const time = dayjs().format("HH:mm:ss")
+    try {
+        const {error} = sms.validate(message, {abortEarly: false})
+        if(error){
+            return res.status(422).send(error.details.map(detail => detail.message))
+        }
+        if(!user){
+            return res.sendStatus(422)
+        }
+        const from = await db.collection('users').findOne({
+            name: user
+        })
+        if(!from){
+            console.log('usuario não encontrado')
+            return res.sendStatus(422)
+        }
+        await db.collection('messages').insertOne({
+            from: user,
+            to: message.to,
+            text: message.text,
+            type: message.type,
+            time: time
+        });
+        await db.collection('messages').findOne()
+        return res.sendStatus(201)
+        
+    } catch (error) {
+        console.log(error)
+        return res.sendStatus(422)
+    }
+})
+
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
