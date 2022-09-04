@@ -158,6 +158,30 @@ app.post('/status', async (req, res) => {
 })
 
 
+setInterval(async () => {
+    const seconds = Date.now() - 10000
+    try {
+        const inactiveUser = await db.collection('users').find({lastStatus: {$lte: seconds}}).toArray()
+        if(inactiveUser.length > 0){
+            await db.collection('messages').insertMany(
+                inactiveUser.map(inactiveUser => {
+                    return {
+                        from: inactiveUser.name,
+                        to: "Todos",
+                        text: "sai da sala...",
+                        type: "status",
+                        time: dayjs(seconds).format("HH:mm:ss")
+                    }
+                })
+            )
+            await db.collection('users').deleteMany({lastStatus: {$lte: seconds}})
+        }
+    } catch (error) {
+        console.log(error)
+        return res.sendStatus(500)
+    }
+}, 15000)
+
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
