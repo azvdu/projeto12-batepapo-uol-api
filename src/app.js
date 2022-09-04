@@ -112,6 +112,35 @@ app.post('/messages', async (req, res) => {
     }
 })
 
+app.get('/messages', async (req, res) => {
+    const limit = parseInt(req.query.limit)
+    const user = req.headers.user
+    try {
+        const listMessages = await db.collection('messages').find().toArray()
+        const messagesFilter = listMessages.filter(message => {
+           const forUser =  message.to === user || message.to === "Todos" || message.from === user
+           const forAll = message.type === "message"
+
+           return forUser || forAll
+        })
+        if(!limit){
+            return res.send(messagesFilter)
+        } else if(messagesFilter.length < limit){
+            return res.send(messagesFilter)
+        } else{
+            await messagesFilter.splice(-limit)
+        }
+            
+        
+        return res.send(listMessages)
+
+    } catch (error) {
+        console.log(error)
+        return res.sendStatus(500)
+    }
+} )
+
+
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
